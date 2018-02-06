@@ -1,3 +1,25 @@
+/*
+  Web client
+
+ This sketch connects to a website (http://www.google.com)
+ using a WiFi shield.
+
+ This example is written for a network using WPA encryption. For
+ WEP or WPA, change the WiFi.begin() call accordingly.
+
+ This example is written for a network using WPA encryption. For
+ WEP or WPA, change the WiFi.begin() call accordingly.
+
+ Circuit:
+ * WiFi shield attached
+
+ created 13 July 2010
+ by dlf (Metodo2 srl)
+ modified 31 May 2012
+ by Tom Igoe
+ */
+
+
 #include <SPI.h>
 #include <WiFi101.h>
 #include "arduino_secrets.h" 
@@ -49,10 +71,10 @@ void setup() {
   if (client.connect(server, 80)) {
     Serial.println("connected to server");
     // Make a HTTP request:
-    client.println("GET /search?q=arduino HTTP/1.1");
-    client.println("Host: www.google.com");
-    client.println("Connection: close");
-    client.println();
+    // client.println("GET /search?q=arduino HTTP/1.1");
+    // client.println("Host: www.google.com");
+    // client.println("Connection: close");
+    // client.println();
   }
 }
 
@@ -62,6 +84,7 @@ void loop() {
   while (client.available()) {
     char c = client.read();
     Serial.write(c);
+    Serial.println("connected");
   }
 
   // if the server's disconnected, stop the client:
