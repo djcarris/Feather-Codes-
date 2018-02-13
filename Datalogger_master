@@ -1,117 +1,133 @@
-/*
-  Web client
-
- This sketch connects to a website (http://www.google.com)
- using a WiFi shield.
-
- This example is written for a network using WPA encryption. For
- WEP or WPA, change the WiFi.begin() call accordingly.
-
- This example is written for a network using WPA encryption. For
- WEP or WPA, change the WiFi.begin() call accordingly.
-
- Circuit:
- * WiFi shield attached
-
- created 13 July 2010
- by dlf (Metodo2 srl)
- modified 31 May 2012
- by Tom Igoe
- */
-
-
+#include <AdafruitIO.h>
+#include <AdafruitIO_Dashboard.h>
+#include <AdafruitIO_Data.h>
+#include <AdafruitIO_Definitions.h>
+#include <AdafruitIO_Feed.h>
+#include <AdafruitIO_Group.h>
+#include <AdafruitIO_MQTT.h>
+#include <AdafruitIO_WiFi.h>
 #include <SPI.h>
 #include <WiFi101.h>
-#include "arduino_secrets.h" 
-///////please enter your sensitive data in the Secret tab/arduino_secrets.h
-char ssid[] = "Projects";        // your network SSID (name)
-char pass[] = "StudentProjects";    // your network password (use for WPA, or use as key for WEP)
-int keyIndex = 0;            // your network key Index number (needed only for WEP)
+#include "config.h"
+
+// Adafruit IO Analog In Example
+// Tutorial Link: https://learn.adafruit.com/adafruit-io-basics-analog-input
+//
+// Adafruit invests time and resources providing this open source code.
+// Please support Adafruit and open source hardware by purchasing
+// products from Adafruit!
+//
+// Written by Todd Treece for Adafruit Industries
+// Copyright (c) 2016 Adafruit Industries
+// Licensed under the MIT license.
+//
+// All text above must be included in any redistribution.
+
+/************************ Example Starts Here *******************************/
+
+// analog pin A
 int status = WL_IDLE_STATUS;
-// if you don't want to use DNS (and reduce your sketch size)
-// use the numeric IP instead of the name for the server:
-//IPAddress server(74,125,232,128);  // numeric IP for Google (no DNS)
-char server[] = "www.google.com";    // name address for Google (using DNS)
 
-// Initialize the Ethernet client library
-// with the IP address and port of the server
-// that you want to connect to (port 80 is default for HTTP):
+#define PHOTOCELL_PIN A1
+#define T A2
+#define P A4
+
+// photocell state
+int current = 0;
+int last = -1;
 WiFiClient client;
+// set up the 'analog' feed
+AdafruitIO_Feed *analog = io.feed("feather_mo_test2");
 
+AdafruitIO_Feed *Tem = io.feed("feather_mo_test1");
+
+AdafruitIO_Feed *Pres = io.feed("feather_mo_test3");
+
+AdafruitIO_Feed *V = io.feed("feather_mo_test4");
 void setup() {
   WiFi.setPins(8,7,4,2);
-  //Initialize serial and wait for port to open:
-  Serial.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
+  // start the serial connection
+  Serial.begin(115200);
 
-  // check for the presence of the shield:
-  // if (WiFi.status() == WL_NO_SHIELD) {
-    // Serial.println("WiFi shield not present");
-    // don't continue:
-    //while (true);
-  //}
-
-  // attempt to connect to WiFi network:
+  // wait for serial monitor to open
+  while (! Serial);
   while (status != WL_CONNECTED) {
-    Serial.print("Attempting to connect to SSID: ");
-    Serial.println(ssid);
-    // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-    status = WiFi.begin(ssid, pass);
+  Serial.print("Attempting to connect to SSID: ");
+  Serial.println(WIFI_SSID);
+  // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
+  status = WiFi.begin(WIFI_SSID, WIFI_PASS);
 
-    // wait 10 seconds for connection:
-    delay(10000);
+  // wait 10 seconds for connection:
+  delay(10000);
   }
-  Serial.println("Connected to wifi");
-  printWiFiStatus();
+  Serial.print("Connecting to Adafruit IO");
+  io.connect();
 
-  Serial.println("\nStarting connection to server...");
-  // if you get a connection, report back via serial:
-  if (client.connect(server, 80)) {
-    Serial.println("connected to server");
-    // Make a HTTP request:
-    // client.println("GET /search?q=arduino HTTP/1.1");
-    // client.println("Host: www.google.com");
-    // client.println("Connection: close");
-    // client.println();
+  // wait for a connection
+  while(io.status() < AIO_CONNECTED) {
+    Serial.print(".");
+
+    delay(500);
   }
+
+  // we are connected
+  Serial.println();
+  Serial.println(io.statusText());
+
 }
 
 void loop() {
-  // if there are incoming bytes available
-  // from the server, read them and print them:
-  while (client.available()) {
+  /*while (client.available()) {
     char c = client.read();
     Serial.write(c);
+  }
+  // tell if the there is a WiFi connection
+  if (client.connected()) {
     Serial.println("connected");
-  }
+    delay (5000);
+  }*/
+  // io.run(); is required for all sketches.
+  // it should always be present at the top of your loop
+  // function. it keeps the client connected to
+  // io.adafruit.com, and processes any incoming data.
+  io.run();
 
-  // if the server's disconnected, stop the client:
-  if (!client.connected()) {
-    Serial.println();
-    Serial.println("disconnecting from server.");
-    client.stop();
-
-    // do nothing forevermore:
-    while (true);
-  }
-}
+  // grab the current state of the pin A1
+  current = analogRead(A1);
 
 
-void printWiFiStatus() {
-  // print the SSID of the network you're attached to:
-  Serial.print("SSID: ");
-  Serial.println(WiFi.SSID());
+  // save the current state to the analog feed
+  Serial.print("sending -> analog");
+  Serial.println(current);
+  analog->save(current);
 
-  // print your WiFi shield's IP address:
-  IPAddress ip = WiFi.localIP();
-  Serial.print("IP Address: ");
-  Serial.println(ip);
+  // store last state
+  last = current;
 
-  // print the received signal strength:
-  long rssi = WiFi.RSSI();
-  Serial.print("signal strength (RSSI):");
-  Serial.print(rssi);
-  Serial.println(" dBm");
+  // grab the current state of the pin A2
+  current = analogRead(A2);
+
+
+  // save the current state to the analog feed
+  Serial.print("sending -> Tem");
+  Serial.println(current);
+  Tem->save(current);
+
+  // store last state
+  last = current;
+
+   // grab the current state of the pin A3
+  current = analogRead(A4);
+
+
+  // save the current state to the analog feed
+  Serial.print("sending -> Pres");
+  Serial.println(current);
+  Pres->save(current);
+
+  // store last state
+  last = current;
+
+  // wait one second (1000 milliseconds == 1 second)
+  delay(30000);
 }
