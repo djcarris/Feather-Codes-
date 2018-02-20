@@ -10,6 +10,7 @@
 #include <WiFi101.h>
 #include "config.h"
 
+
 // Adafruit IO Analog In Example
 // Tutorial Link: https://learn.adafruit.com/adafruit-io-basics-analog-input
 //
@@ -26,40 +27,51 @@
 /************************ Example Starts Here *******************************/
 
 // analog pin A
-int status = WL_IDLE_STATUS;
-
-#define PHOTOCELL_PIN A1
-#define T A2
-#define P A4
-
-// photocell state
+//int status = WL_IDLE_STATUS;
+// set boolean for email sending
+boolean statusCheck = false;
+//#define Pres A0
+//#define Turb A1
+//#define Temp A2
+//#define Volt A3
 int current = 0;
 int last = -1;
+char server[] = "mail.smtp2go.com";
+int port = 2525;
 WiFiClient client;
+char ssid[] = "Projects";     // the name of your network
+char pass[] = "StudentProjects";  // your network password
+int status = WL_IDLE_STATUS;     // the Wifi radio's status
 // set up the 'analog' feed
-AdafruitIO_Feed *analog = io.feed("feather_mo_test2");
+AdafruitIO_Feed *Turb = io.feed("Turbidity");
 
-AdafruitIO_Feed *Tem = io.feed("feather_mo_test1");
+AdafruitIO_Feed *Temp = io.feed("Temperature");
 
-AdafruitIO_Feed *Pres = io.feed("feather_mo_test3");
+AdafruitIO_Feed *Pres = io.feed("Pressure");
 
-AdafruitIO_Feed *V = io.feed("feather_mo_test4");
+AdafruitIO_Feed *Volt = io.feed("Voltage");
 void setup() {
   WiFi.setPins(8,7,4,2);
   // start the serial connection
   Serial.begin(115200);
 
   // wait for serial monitor to open
-  while (! Serial);
-  while (status != WL_CONNECTED) {
-  Serial.print("Attempting to connect to SSID: ");
-  Serial.println(WIFI_SSID);
-  // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-  status = WiFi.begin(WIFI_SSID, WIFI_PASS);
-
+// attempt to connect to Wifi network:
+  while ( status != WL_CONNECTED) {
+    Serial.print(F("Attempting to connect to open SSID: "));
+    Serial.println(ssid);
+    status = WiFi.begin(ssid,pass);
+ 
+    // wait 10 seconds for connection:
+    delay(10000);
+  }
+ 
+  // you're connected now, so print out the data:
+  Serial.print(F("You're connected to the network"));
+  // printCurrentNet();
+  //printWifiData();
   // wait 10 seconds for connection:
   delay(10000);
-  }
   Serial.print("Connecting to Adafruit IO");
   io.connect();
 
@@ -76,30 +88,33 @@ void setup() {
 
 }
 
-void loop() {
-  /*while (client.available()) {
-    char c = client.read();
-    Serial.write(c);
-  }
-  // tell if the there is a WiFi connection
-  if (client.connected()) {
-    Serial.println("connected");
-    delay (5000);
-  }*/
+void loop() 
+{
   // io.run(); is required for all sketches.
   // it should always be present at the top of your loop
   // function. it keeps the client connected to
   // io.adafruit.com, and processes any incoming data.
   io.run();
+  
+  // grab the current state of the pin A0
+  current = analogRead(A0);
 
+
+  // save the current state to the analog feed
+  Serial.print("sending -> Pressure");
+  Serial.println(current);
+  Pres->save(current);
+
+  // store last state
+  last = current;
   // grab the current state of the pin A1
   current = analogRead(A1);
 
 
   // save the current state to the analog feed
-  Serial.print("sending -> analog");
+  Serial.print("sending -> Temperature");
   Serial.println(current);
-  analog->save(current);
+  Temp->save(current);
 
   // store last state
   last = current;
@@ -109,25 +124,257 @@ void loop() {
 
 
   // save the current state to the analog feed
-  Serial.print("sending -> Tem");
+  Serial.print("sending -> Turbidity");
   Serial.println(current);
-  Tem->save(current);
+  Turb->save(current);
 
   // store last state
   last = current;
 
    // grab the current state of the pin A3
-  current = analogRead(A4);
+  current = analogRead(A3);
 
 
   // save the current state to the analog feed
-  Serial.print("sending -> Pres");
+  Serial.print("sending -> Voltage");
   Serial.println(current);
-  Pres->save(current);
+  Volt->save(current);
 
   // store last state
   last = current;
-
-  // wait one second (1000 milliseconds == 1 second)
-  delay(30000);
+// read the input on analog pin A0 A1 A2:
+  int sensorValue = analogRead(A0);
+  int sensorValue2 = analogRead(A1); 
+  int sensorValue3 = analogRead(A2);
+  int sensorValue4 = analogRead(A3);
+  // print out the value you read:
+  Serial.print(sensorValue);
+  Serial.print(" ");
+  Serial.print(sensorValue2);  
+  Serial.print(" ");
+  Serial.println(sensorValue3);
+  Serial.print(" ");
+  Serial.print(sensorValue4);
+  delay(5000);
+  /*if(sensorValue4 > 2.7 && statusCheck == false);
+   {
+       if(sendEmail()) Serial.println("Email sent");    
+       else Serial.println("Email failed");
+        statusCheck = true;
+   }*/      
+ } 
+byte sendEmail()
+{
+  byte thisByte = 0;
+  byte respCode;
+  char tBuf[64];
+ 
+  if(client.connect(server,port) == 1) {
+    Serial.println(F("connected"));
+  } else {
+    client.stop();
+    Serial.println(F("connection failed"));
+    return 0;
+  }
+ 
+  if(!eRcv()) return 0;
+ 
+  Serial.println(F("Sending hello"));
+  // change to the IP of your Arduino
+  strcpy_P(tBuf,PSTR("EHLO 149.119.146.59\r\n"));  
+  client.write(tBuf);
+  if(!eRcv()) return 0;
+ 
+  Serial.println(F("Sending auth login"));
+  strcpy_P(tBuf,PSTR("auth login\r\n"));  
+  client.write(tBuf);
+  if(!eRcv()) return 0;
+ 
+  Serial.println(F("Sending User"));
+  strcpy_P(tBuf,PSTR("bm1jZGF0YWxvZ2dlcnNAZ21haWwuY29t\r\n"));  
+ 
+  client.write(tBuf);
+  if(!eRcv()) return 0;
+ 
+  Serial.println(F("Sending Password"));
+  strcpy_P(tBuf,PSTR("Vk95UHU2VVpQNk9a\r\n"));  
+  client.write(tBuf);
+  if(!eRcv()) return 0;
+ 
+// change to your email address (sender)
+  Serial.println(F("Sending From"));
+  strcpy_P(tBuf,PSTR("MAIL From: <nmcdataloggers@smtp2go.com>\r\n"));  
+  client.write(tBuf);
+  if(!eRcv()) return 0;
+ 
+// change to recipient address
+  Serial.println(F("Sending To"));
+  strcpy_P(tBuf,PSTR("RCPT To: <nmcdataloggers@gmail.com>\r\n"));  
+  client.write(tBuf);
+  if(!eRcv()) return 0;
+ 
+  Serial.println(F("Sending DATA"));
+  strcpy_P(tBuf,PSTR("DATA\r\n"));  
+  client.write(tBuf);
+  if(!eRcv()) return 0;
+ 
+  Serial.println(F("Sending email"));
+ 
+// change to recipient address
+  strcpy_P(tBuf,PSTR("To: nmccc <nmcdataloggers@gmail.com>\r\n"));  
+  client.write(tBuf);
+ 
+// change to your address
+  strcpy_P(tBuf,PSTR("From: nmccc <nmcdataloggers@smtp2go.com\r\n"));  
+  client.write(tBuf);
+ 
+  client.println("Subject: Arduino email test\r\n");
+ 
+  client.println("This is from my Arduino!");
+ 
+  client.println(".");
+  if(!eRcv()) return 0;
+ 
+  Serial.println(F("Sending QUIT"));
+  strcpy_P(tBuf,PSTR("QUIT\r\n"));  
+  client.write(tBuf);
+  if(!eRcv()) return 0;
+ 
+  client.stop();
+ 
+  Serial.println(F("disconnected"));
+ 
+  return 1;
 }
+ 
+byte eRcv()
+{
+  byte respCode;
+  byte thisByte;
+  int loopCount = 0;
+ 
+  while(!client.available()) {
+    delay(1);
+    loopCount++;
+ 
+    // if nothing received for 10 seconds, timeout
+    if(loopCount > 10000) {
+      client.stop();
+      Serial.println(F("\r\nTimeout"));
+      return 0;
+    }
+  }
+ 
+  respCode = client.peek();
+ 
+  while(client.available())
+  {  
+    thisByte = client.read();    
+    Serial.write(thisByte);
+  }
+ 
+  if(respCode >= '4')
+  {
+    efail();
+    return 0;  
+  }
+ 
+  return 1;
+}
+ 
+ 
+void efail()
+{
+  byte thisByte = 0;
+  int loopCount = 0;
+ 
+  client.println("QUIT");
+ 
+  while(!client.available()) {
+    delay(1);
+    loopCount++;
+ 
+    // if nothing received for 10 seconds, timeout
+    if(loopCount > 10000) {
+      client.stop();
+      Serial.println(F("\r\nTimeout"));
+      return;
+    }
+  }
+ 
+  while(client.available())
+  {  
+    thisByte = client.read();    
+    Serial.write(thisByte);
+  }
+ 
+  client.stop();
+ 
+  Serial.println(F("disconnected"));
+}
+ 
+/*void printCurrentNet() {
+  // print the SSID of the network you're attached to:
+  Serial.print(F("SSID: Projects "));
+  Serial.println(WiFi.SSID());
+ 
+  // print the MAC address of the router you're attached to:
+  byte bssid[6];
+  WiFi.BSSID(bssid);    
+  Serial.print(F("BSSID: "));
+  Serial.print(bssid[5],HEX);
+  Serial.print(F(":"));
+  Serial.print(bssid[4],HEX);
+  Serial.print(F(":"));
+  Serial.print(bssid[3],HEX);
+  Serial.print(F(":"));
+  Serial.print(bssid[2],HEX);
+  Serial.print(F(":"));
+  Serial.print(bssid[1],HEX);
+  Serial.print(F(":"));
+  Serial.println(bssid[0],HEX);
+ 
+  // print the received signal strength:
+  long rssi = WiFi.RSSI();
+  Serial.print(F("signal strength (RSSI):"));
+  Serial.println(rssi);
+ 
+  // print the encryption type:
+  byte encryption = WiFi.encryptionType();
+  Serial.print(F("Encryption Type:"));
+  Serial.println(encryption,HEX);
+}
+ 
+void printWifiData() {
+  // print your WiFi shield's IP address:
+  IPAddress ip = WiFi.localIP();
+    Serial.print(F("IP Address: "));
+  Serial.println(ip);
+  Serial.println(ip);
+ 
+  // print your MAC address:
+  byte mac[6];  
+  WiFi.macAddress(mac);
+  Serial.print(F("MAC address: "));
+  Serial.print(mac[5],HEX);
+  Serial.print(F(":"));
+  Serial.print(mac[4],HEX);
+  Serial.print(F(":"));
+  Serial.print(mac[3],HEX);
+  Serial.print(F(":"));
+  Serial.print(mac[2],HEX);
+  Serial.print(F(":"));
+  Serial.print(mac[1],HEX);
+  Serial.print(F(":"));
+  Serial.println(mac[0],HEX);
+ 
+  // print your subnet mask:
+  IPAddress subnet = WiFi.subnetMask();
+  Serial.print(F("NetMask: "));
+  Serial.println(subnet);
+ 
+  // print your gateway address:
+  IPAddress gateway = WiFi.gatewayIP();
+  Serial.print(F("Gateway: "));
+  Serial.println(gateway);
+  */
