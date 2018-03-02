@@ -25,67 +25,81 @@
 // All text above must be included in any redistribution.
 
 /************************ Example Starts Here *******************************/
+// Global Variables for WiFi_Connection
+WiFiClient client;
+// the Wifi radio's status
+int status = WL_IDLE_STATUS;
+//char ssid[] = "Projects";     // the name of your network
+//char pass[] = "StudentProjects";  // your network password
 
-// analog pin A
-//int status = WL_IDLE_STATUS;
-// set boolean for email sending
-boolean statusCheck = false;
-//#define Pres A0
-//#define Turb A1
-//#define Temp A2
-//#define Volt A3
-int current = 0;
-int last = -1;
+// Global variables for sending alert emails
+// smtp Email server assignment
 char server[] = "mail.smtp2go.com";
 int port = 2525;
-WiFiClient client;
-char ssid[] = "Projects";     // the name of your network
-char pass[] = "StudentProjects";  // your network password
-int status = WL_IDLE_STATUS;     // the Wifi radio's status
-// set up the 'analog' feed
-AdafruitIO_Feed *Turb = io.feed("Turbidity");
+// set boolean for email sending, change to true when condition met
+boolean statusCheck = false;
 
-AdafruitIO_Feed *Temp = io.feed("Temperature");
+//Sensor reading variables
+// first assignemnt of current and last variables to be overwritten later
+int current = 0;
+int last = -1;
 
-AdafruitIO_Feed *Pres = io.feed("Pressure");
+// set up the 'analog' feed with adafruit io
+AdafruitIO_Feed *Turb = io.feed("Turbidity"); //Maybe Temp
+
+AdafruitIO_Feed *Temp = io.feed("Temperature"); //Maybe Turb
+
+AdafruitIO_Feed *Depth = io.feed("Depth");
 
 AdafruitIO_Feed *Volt = io.feed("Voltage");
+
+//#define MQTT_CONN_KEEPALIVE 300
+
+// flash memory storage of feed name on IO
+const char DEPTH_FEED[] PROGMEM = IO_USERNAME "/feeds/marcellus-library-water-quality-data.depth";
+const char TURBIDITY_FEED[] PROGMEM = IO_USERNAME "/feeds/marcellus-library-water-quality-data.turbidity";
+const char TEMPERATURE_FEED[] PROGMEM = IO_USERNAME "/feeds/marcellus-library-water-quality-data.temperature";
+const char VOLTAGE_FEED[] PROGMEM = IO_USERNAME "/feeds/marcellus-library-water-quality-data.voltage";
+
+// object to publish sensor readings to adafruit IO feeds
+//Adafruit_MQTT_Publish Depth = Adafruit_MQTT_Publish(&mqtt, DEPTH_FEED);
+//Adafruit_MQTT_Publish Turbidity = Adafruit_MQTT_Publish(&mqtt, TURBIDITY_FEED);
+//Adafruit_MQTT_Publish Temperature = Adafruit_MQTT_Publish(&mqtt, TEMPERATURE_FEED);
+//Adafruit_MQTT_Publish Voltage = Adafruit_MQTT_Publish(&mqtt, VOLTAGE_FEED);
+
 void setup() {
+  //WiFi pins specific to the Adafruit Feather M0 WiFi - ATSAMD21 + ATWINC1500 breakout board
   WiFi.setPins(8,7,4,2);
-  // start the serial connection
+  
+  // start the serial connection, sets rate of data transmission
   Serial.begin(115200);
 
   // wait for serial monitor to open
-// attempt to connect to Wifi network:
+  // attempt to connect to Wifi network:
   while ( status != WL_CONNECTED) {
     Serial.print(F("Attempting to connect to open SSID: "));
-    Serial.println(ssid);
-    status = WiFi.begin(ssid,pass);
- 
+    Serial.println(WIFI_SSID);
+    status = WiFi.begin(WIFI_SSID,WIFI_PASS); 
     // wait 10 seconds for connection:
     delay(10000);
   }
- 
   // you're connected now, so print out the data:
   Serial.print(F("You're connected to the network"));
-  // printCurrentNet();
-  //printWifiData();
-  // wait 10 seconds for connection:
-  delay(10000);
+
+  Serial.println(" ");
   Serial.print("Connecting to Adafruit IO");
   io.connect();
 
   // wait for a connection
   while(io.status() < AIO_CONNECTED) {
     Serial.print(".");
-
     delay(500);
   }
 
   // we are connected
+  Serial.println("Connected to Adafruit IO");
   Serial.println();
   Serial.println(io.statusText());
-
 }
 
 void loop() 
@@ -95,73 +109,86 @@ void loop()
   // function. it keeps the client connected to
   // io.adafruit.com, and processes any incoming data.
   io.run();
+  // Checking if still connected to AIO
+  //if (io.status() < AIO_CONNECTED);
+    //Serial.print("Connection Lost");
+    //Serial.print("Re-Connecting to AIO");
+    //io.connect();
+  //Serial.println(io.statusText());
   
-  // grab the current state of the pin A0
-  current = analogRead(A0);
-
-
-  // save the current state to the analog feed
-  Serial.print("sending -> Pressure");
+  // grab the current state of the depth reading pin
+  current = analogRead (A0);
+  // save the current state to the analog feed "Depth"
+  Serial.println(" ");
+  Serial.print("sending -> Depth: ");
+  Serial.print(" ");
   Serial.println(current);
-  Pres->save(current);
-
-  // store last state
+  Depth->save(current);
+  // store last state of the depth reading pin
   last = current;
-  // grab the current state of the pin A1
+  
+  // grab the current state of the turbidity reading pin
   current = analogRead(A1);
-
-
-  // save the current state to the analog feed
-  Serial.print("sending -> Temperature");
-  Serial.println(current);
-  Temp->save(current);
-
-  // store last state
-  last = current;
-
-  // grab the current state of the pin A2
-  current = analogRead(A2);
-
-
-  // save the current state to the analog feed
-  Serial.print("sending -> Turbidity");
+  // save the current state to the analog feed "Turbidity"
+  Serial.println(" ");
+  Serial.print("sending -> Turbidity: "); //Maybe Temp
+  Serial.print(" ");
   Serial.println(current);
   Turb->save(current);
-
-  // store last state
+  // store last state of the turbidity reading pin
   last = current;
 
-   // grab the current state of the pin A3
+  // grab the current state of the temperature reading pint
+  current = analogRead(A2);
+  // save the current state to the analog feed "Temperature"
+  Serial.println(" ");
+  Serial.print("sending -> Temperature"); // Maybe Turb
+  Serial.print(" ");
+  Serial.println(current);
+  Temp->save(current);
+  
+  
+  // store last state of the temperature reading pin
+  last = current;
+
+  // grab the current state of the voltage reading pin
   current = analogRead(A3);
-
-
-  // save the current state to the analog feed
+  // save the current state to the analog feed "voltage"
+  Serial.print(" ");
   Serial.print("sending -> Voltage");
   Serial.println(current);
+  Serial.println(" ");
   Volt->save(current);
-
-  // store last state
+  // store last state of the voltage reading pin
   last = current;
-// read the input on analog pin A0 A1 A2:
-  int sensorValue = analogRead(A0);
-  int sensorValue2 = analogRead(A1); 
-  int sensorValue3 = analogRead(A2);
-  int sensorValue4 = analogRead(A3);
+
+  // for printing in the Serial monitor
+  // read the input on analog pin A0 A1 A2 A3:
+  int Depth_pin = analogRead(A0);
+  int Turb_pin = analogRead(A1); 
+  int Temp_pin = analogRead(A2);
+  int Volt_pin = analogRead(A3);
   // print out the value you read:
-  Serial.print(sensorValue);
+  //setTime(1,1,1,1,1,2000);
+  Serial.print(Depth_pin);
   Serial.print(" ");
-  Serial.print(sensorValue2);  
+  Serial.print(Turb_pin);  
   Serial.print(" ");
-  Serial.println(sensorValue3);
+  Serial.println(Temp_pin);
   Serial.print(" ");
-  Serial.print(sensorValue4);
+  Serial.print(Volt_pin);
+  Serial.print(" ");
+  // datetime = {int day(),int hour(), int minute(), int second()}
+  // const int analog_val[] = {datetime,sensorValue,sensorValue2,sensorValue3,sensorValue4};
   delay(5000);
-  /*if(sensorValue4 > 2.7 && statusCheck == false);
+}
+  /*if(Volt_pint < 2.7 && statusCheck == false);
    {
        if(sendEmail()) Serial.println("Email sent");    
        else Serial.println("Email failed");
         statusCheck = true;
-   }*/      
+   }*/  
+/*    
  } 
 byte sendEmail()
 {
@@ -179,7 +206,7 @@ byte sendEmail()
  
   if(!eRcv()) return 0;
  
-  Serial.println(F("Sending hello"));
+  Serial.println(F("Sending Hello"));
   // change to the IP of your Arduino
   strcpy_P(tBuf,PSTR("EHLO 149.119.146.59\r\n"));  
   client.write(tBuf);
@@ -228,9 +255,9 @@ byte sendEmail()
   strcpy_P(tBuf,PSTR("From: nmccc <nmcdataloggers@smtp2go.com\r\n"));  
   client.write(tBuf);
  
-  client.println("Subject: Arduino email test\r\n");
+  client.println("Subject: Marcellus Library Datalogger ALERT!!\r\n");
  
-  client.println("This is from my Arduino!");
+  client.println("The datalogger at the Marcellus Library site is low on battery. Action must be taken shortly to assure consistent data collection");
  
   client.println(".");
   if(!eRcv()) return 0;
@@ -312,7 +339,7 @@ void efail()
  
   Serial.println(F("disconnected"));
 }
- 
+*/
 /*void printCurrentNet() {
   // print the SSID of the network you're attached to:
   Serial.print(F("SSID: Projects "));
