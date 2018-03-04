@@ -5,7 +5,9 @@
 #include <AdafruitIO_Feed.h>
 #include <AdafruitIO_Group.h>
 #include <AdafruitIO_MQTT.h>
+#include <Adafruit_MQTT.h>
 #include <AdafruitIO_WiFi.h>
+#include <Adafruit_MQTT_Client.h>
 #include <SPI.h>
 #include <WiFi101.h>
 #include "config.h"
@@ -27,10 +29,8 @@
 /************************ Example Starts Here *******************************/
 // Global Variables for WiFi_Connection
 WiFiClient client;
-// the Wifi radio's status
+// The Wifi radio's status
 int status = WL_IDLE_STATUS;
-//char ssid[] = "Projects";     // the name of your network
-//char pass[] = "StudentProjects";  // your network password
 
 // Global variables for sending alert emails
 // smtp Email server assignment
@@ -53,7 +53,7 @@ AdafruitIO_Feed *Depth = io.feed("Depth");
 
 AdafruitIO_Feed *Volt = io.feed("Voltage");
 
-//#define MQTT_CONN_KEEPALIVE 300
+#define MQTT_CONN_KEEPALIVE 300
 
 // flash memory storage of feed name on IO
 const char DEPTH_FEED[] PROGMEM = IO_USERNAME "/feeds/marcellus-library-water-quality-data.depth";
@@ -66,7 +66,24 @@ const char VOLTAGE_FEED[] PROGMEM = IO_USERNAME "/feeds/marcellus-library-water-
 //Adafruit_MQTT_Publish Turbidity = Adafruit_MQTT_Publish(&mqtt, TURBIDITY_FEED);
 //Adafruit_MQTT_Publish Temperature = Adafruit_MQTT_Publish(&mqtt, TEMPERATURE_FEED);
 //Adafruit_MQTT_Publish Voltage = Adafruit_MQTT_Publish(&mqtt, VOLTAGE_FEED);
-
+void MQTT_connect() {
+    int8_t ret;
+ 
+    // Stop if already connected.
+    if (mqtt.connected()) {
+      return;
+    }
+ 
+    Serial.print("Connecting to MQTT... ");
+ 
+    while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
+        Serial.println(mqtt.connectErrorString(ret));
+        Serial.println("Retrying MQTT connection in 5 seconds...");
+        mqtt.disconnect();
+        delay(5000);  // wait 5 seconds
+    }
+    Serial.println("MQTT Connected!");
+ }
 void setup() {
   //WiFi pins specific to the Adafruit Feather M0 WiFi - ATSAMD21 + ATWINC1500 breakout board
   WiFi.setPins(8,7,4,2);
@@ -88,13 +105,13 @@ void setup() {
 
   Serial.println(" ");
   Serial.print("Connecting to Adafruit IO");
-  io.connect();
-
+  //io.connect();
+  MQTT_connect();
   // wait for a connection
-  while(io.status() < AIO_CONNECTED) {
+  /*while(io.status() < AIO_CONNECTED) {
     Serial.print(".");
     delay(500);
-  }
+  }*/
 
   // we are connected
   Serial.println("Connected to Adafruit IO");
@@ -108,7 +125,7 @@ void loop()
   // it should always be present at the top of your loop
   // function. it keeps the client connected to
   // io.adafruit.com, and processes any incoming data.
-  io.run();
+  // io.run();
   // Checking if still connected to AIO
   //if (io.status() < AIO_CONNECTED);
     //Serial.print("Connection Lost");
@@ -182,13 +199,13 @@ void loop()
   // const int analog_val[] = {datetime,sensorValue,sensorValue2,sensorValue3,sensorValue4};
   delay(5000);
 }
-  /*if(Volt_pint < 2.7 && statusCheck == false);
+  if(Volt_pint < 2.7 && statusCheck == false);
    {
        if(sendEmail()) Serial.println("Email sent");    
        else Serial.println("Email failed");
         statusCheck = true;
-   }*/  
-/*    
+   }
+    
  } 
 byte sendEmail()
 {
@@ -310,8 +327,7 @@ byte eRcv()
 }
  
  
-void efail()
-{
+void efail() {
   byte thisByte = 0;
   int loopCount = 0;
  
@@ -328,6 +344,7 @@ void efail()
       return;
     }
   }
+}
  
   while(client.available())
   {  
@@ -338,9 +355,8 @@ void efail()
   client.stop();
  
   Serial.println(F("disconnected"));
-}
-*/
-/*void printCurrentNet() {
+
+void printCurrentNet() {
   // print the SSID of the network you're attached to:
   Serial.print(F("SSID: Projects "));
   Serial.println(WiFi.SSID());
@@ -404,4 +420,4 @@ void printWifiData() {
   IPAddress gateway = WiFi.gatewayIP();
   Serial.print(F("Gateway: "));
   Serial.println(gateway);
-  */
+}
