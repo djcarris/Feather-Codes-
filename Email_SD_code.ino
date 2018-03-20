@@ -1,3 +1,4 @@
+#include <Wire.h>
 #include "RTClib.h"
 #include <AdafruitIO.h>
 #include <AdafruitIO_Dashboard.h>
@@ -124,6 +125,7 @@ void setup() {
   }
   // you're connected now, so print out the data:
   Serial.print("You're connected to the network");
+  Serial.println(" ");
 
 if (! rtc.begin()) {
     Serial.println("Couldn't find RTC");
@@ -132,11 +134,6 @@ if (! rtc.begin()) {
 
   if (! rtc.initialized()) {
     Serial.println("RTC is NOT running!");
-    // following line sets the RTC to the date & time this sketch was compiled
-    //rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-    // This line sets the RTC with an explicit date & time, for example to set
-    // January 21, 2014 at 3am you would call:
-    // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
   }
 
 pinMode(13, OUTPUT);
@@ -175,57 +172,6 @@ pinMode(13, OUTPUT);
 uint8_t i=0;
 void loop() 
 {
-  
-  /*
-  
-   // grab the current state of the depth reading pin
-  current = analogRead (A0);
-  // save the current state to the analog feed "Depth"
-  Serial.println(" ");
-  Serial.print("sending -> Depth: ");
-  Serial.print(" ");
-  Serial.println(current);
-  Depth->save(current);
-  // store last state of the depth reading pin
-  last = current;
-  
-  // grab the current state of the turbidity reading pin
-  current = analogRead(A1);
-  // save the current state to the analog feed "Turbidity"
-  Serial.println(" ");
-  Serial.print("sending -> Turbidity: "); //Maybe Temp
-  Serial.print(" ");
-  Serial.println(current);
-  Turb->save(current);
-  // store last state of the turbidity reading pin
-  last = current;
-
-  // grab the current state of the temperature reading pint
-  current = analogRead(A2);
-  // save the current state to the analog feed "Temperature"
-  Serial.println(" ");
-  Serial.print("sending -> Temperature "); // Maybe Turb
-  Serial.print(" ");
-  Serial.println(current);
-  Temp->save(current);
-  
-  
-  // store last state of the temperature reading pin
-  last = current;
-
-  // grab the current state of the voltage reading pin
-  current = analogRead(A3);
-  
-  // save the current state to the analog feed "voltage"
-  Serial.println(" ");
-  Serial.print("sending -> Voltage ");
-  Serial.println(current);
-  Serial.println(" ");
-  Volt->save(current);
-  // store last state of the voltage reading pin
-  last = current;
-*/
-  // for printing in the Serial monitor
   // read the input on analog pin A0 A1 A2 A3:
   int Depth_pin = analogRead(A0);
   int Turb_pin = analogRead(A1); 
@@ -251,33 +197,37 @@ DateTime now = rtc.now();
    
   // Sace to SD card
   // Pressure Sensor
+  //logfile.print("DateTime: "); logfile.println(rtc.now());
+  //Serial.print("DateTime: "); Serial.println(rtc.now());
   digitalWrite(8, HIGH);
   logfile.print("Pressure = "); logfile.println(analogRead(0));
+  logfile.flush();
   Serial.print("Pressure = "); Serial.println(analogRead(0));
   digitalWrite(8, LOW);
   // Turbidity Sensor
   digitalWrite(8, HIGH);
   logfile.print("Turbidity = "); logfile.println(analogRead(1));
+  logfile.flush();
   Serial.print("Turbidity = "); Serial.println(analogRead(1));
   digitalWrite(8, LOW);
   // Temperature Sensor
   digitalWrite(8, HIGH);
   logfile.print("Temperature = "); logfile.println(analogRead(2));
+  logfile.flush();
   Serial.print("Temperature = "); Serial.println(analogRead(2));
   digitalWrite(8, LOW);
   // Volt Meter
   digitalWrite(8, HIGH);
   logfile.print("Voltage = "); logfile.println(analogRead(3));
+  logfile.flush();
   Serial.print("Voltage = "); Serial.println(analogRead(3));
   digitalWrite(8, LOW);
-  delay(2000);
    //email data
    if(sendEmail(Depth_pin, Turb_pin, Temp_pin, Volt_pin)) Serial.println("Email sent");    
        else Serial.println("Email failed");
         statusCheck = true;
   // Change delay to 3.6 x 10^6 for miliseconds in an hour
-  delay(30000);
-
+  //delay(3600000);
 
 // email when voltage too low
   /*if(Volt_pin < 2.7 && statusCheck == false);
@@ -286,7 +236,7 @@ DateTime now = rtc.now();
        else Serial.println("Email failed");
         statusCheck = true;
    }*/
-delay(30000);
+delay(180000);
 }
 byte sendEmail(int Depth_pin, int Turb_pin, int Temp_pin, int Volt_pin){
   byte thisByte = 0;
@@ -362,8 +312,6 @@ byte sendEmail(int Depth_pin, int Turb_pin, int Temp_pin, int Volt_pin){
   client.print(Temp_pin);
   client.println("Voltage Reading: ");
   client.print(Volt_pin);
-  client.println("The datalogger at the Marcellus Library site is low on battery. Action must be taken shortly to assure consistent data collection");
-  client.println(".");
   if(!eRcv()) return 0;
  
   Serial.println(F("Sending QUIT"));
@@ -429,79 +377,3 @@ void efail() {
     }
   }
 }
-/*
-  while(client.available()) {  
-    thisByte = client.read();    
-    Serial.write(thisByte);
-  }
- 
-  client.stop();
- 
-  Serial.println(F("disconnected"));
-
-void printCurrentNet() {
-  // print the SSID of the network you're attached to:
-  Serial.print(F("SSID: Projects "));
-  Serial.println(WiFi.SSID());
- 
-  // print the MAC address of the router you're attached to:
-  byte bssid[6];
-  WiFi.BSSID(bssid);    
-  Serial.print(F("BSSID: "));
-  Serial.print(bssid[5],HEX);
-  Serial.print(F(":"));
-  Serial.print(bssid[4],HEX);
-  Serial.print(F(":"));
-  Serial.print(bssid[3],HEX);
-  Serial.print(F(":"));
-  Serial.print(bssid[2],HEX);
-  Serial.print(F(":"));
-  Serial.print(bssid[1],HEX);
-  Serial.print(F(":"));
-  Serial.println(bssid[0],HEX);
- 
-  // print the received signal strength:
-  long rssi = WiFi.RSSI();
-  Serial.print(F("signal strength (RSSI):"));
-  Serial.println(rssi);
- 
-  // print the encryption type:
-  byte encryption = WiFi.encryptionType();
-  Serial.print(F("Encryption Type:"));
-  Serial.println(encryption,HEX);
-}
- 
-void printWifiData() {
-  // print your WiFi shield's IP address:
-  IPAddress ip = WiFi.localIP();
-    Serial.print(F("IP Address: "));
-  Serial.println(ip);
-  Serial.println(ip);
- 
-  // print your MAC address:
-  byte mac[6];  
-  WiFi.macAddress(mac);
-  Serial.print(F("MAC address: "));
-  Serial.print(mac[5],HEX);
-  Serial.print(F(":"));
-  Serial.print(mac[4],HEX); 
-  Serial.print(F(":"));
-  Serial.print(mac[3],HEX);
-  Serial.print(F(":"));
-  Serial.print(mac[2],HEX);
-  Serial.print(F(":"));
-  Serial.print(mac[1],HEX);
-  Serial.print(F(":"));
-  Serial.println(mac[0],HEX);
- 
-  // print your subnet mask:
-  IPAddress subnet = WiFi.subnetMask();
-  Serial.print(F("NetMask: "));
-  Serial.println(subnet);
- 
-  // print your gateway address:
-  IPAddress gateway = WiFi.gatewayIP();
-  Serial.print(F("Gateway: "));
-  Serial.println(gateway);
-}
-*/
