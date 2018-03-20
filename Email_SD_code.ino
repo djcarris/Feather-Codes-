@@ -5,7 +5,7 @@
 #include <AdafruitIO_Feed.h>
 #include <AdafruitIO_Group.h>
 #include <AdafruitIO_MQTT.h>
-#include <AdafruitIO_WiFi.h>
+//#include <AdafruitIO_WiFi.h>
 #include <SPI.h>
 #include <WiFi101.h>
 //#include "config.h"
@@ -50,11 +50,10 @@ AdafruitIO_WiFi io(IO_USERNAME, IO_KEY, WIFI_SSID, WIFI_PASS);
 
 
 /************************ Example Starts Here *******************************/
-// Global Variables for WiFi_Connection
-WiFiClient client;
 // The Wifi radio's status
 int status = WL_IDLE_STATUS;
-
+// Global Variables for WiFi_Connection
+WiFiClient client;
 // Global variables for sending alert emails
 // smtp Email server assignment
 char server[] = "mail.smtp2go.com";
@@ -68,9 +67,9 @@ int current = 0;
 int last = -1;
 
 // set up the 'analog' feed with adafruit io
-AdafruitIO_Feed *Turb = io.feed("Turbidity"); //Maybe Temp
+AdafruitIO_Feed *Turb = io.feed("Turbidity");
 
-AdafruitIO_Feed *Temp = io.feed("Temperature"); //Maybe Turb
+AdafruitIO_Feed *Temp = io.feed("Temperature");
 
 AdafruitIO_Feed *Depth = io.feed("Depth");
 
@@ -84,39 +83,37 @@ void setup() {
   Serial.begin(115200);
 
   // wait for serial monitor to open
+  while (!Serial);
   // attempt to connect to Wifi network:
   while ( status != WL_CONNECTED) {
-    Serial.print(F("Attempting to connect to open SSID: "));
+    Serial.print("Attempting to connect to SSID: ");
     Serial.println(WIFI_SSID);
     status = WiFi.begin(WIFI_SSID,WIFI_PASS); 
     // wait 10 seconds for connection:
     delay(10000);
   }
   // you're connected now, so print out the data:
-  Serial.print(F("You're connected to the network"));
+  Serial.print("You're connected to the network");
 
-  Serial.println(" ");
+  /*Serial.println(" ");
   Serial.print("Connecting to Adafruit IO");
   io.connect();
-  // wait for a connection
-  /*while(io.status() < AIO_CONNECTED) {
-    Serial.print(".");
-    delay(500);
-  }*/
-
+  while(io.status() < AIO_CONNECTED) {
+      Serial.print(".");
+      delay(500);
+  }
   // we are connected
   Serial.println("Connected to Adafruit IO");
   Serial.println();
-  Serial.println(io.statusText());
+  Serial.println(io.statusText());*/
 }
-
 void loop() 
 {
   //is required for all sketches.
   // it should always be present at the top of your loop
   // function. it keeps the client connected to
   // io.adafruit.com, and processes any incoming data.
-  io.run();
+  //io.run();
   // Checking if still connected to AIO
   //if (io.status() < AIO_CONNECTED);
     //Serial.print("Connection Lost");
@@ -186,20 +183,26 @@ void loop()
   Serial.print(" ");
   Serial.print(Volt_pin);
   Serial.print(" ");
+  
+   
+   //email data
+   if(sendEmail(Depth_pin, Turb_pin, Temp_pin, Volt_pin)) Serial.println("Email sent");    
+       else Serial.println("Email failed");
+        statusCheck = true;
   // Change delay to 3.6 x 10^6 for miliseconds in an hour
-  delay(5000);
+  delay(30000);
 
 
 // email when voltage too low
-  if(Volt_pin < 2.7 && statusCheck == false);
+  /*if(Volt_pin < 2.7 && statusCheck == false);
    {
        if(sendEmail()) Serial.println("Email sent");    
        else Serial.println("Email failed");
         statusCheck = true;
-   }
+   }*/
+delay(30000);
 }
-byte sendEmail()
-{
+byte sendEmail(int Depth_pin, int Turb_pin, int Temp_pin, int Volt_pin){
   byte thisByte = 0;
   byte respCode;
   char tBuf[64];
@@ -263,17 +266,16 @@ byte sendEmail()
   strcpy_P(tBuf,PSTR("From: nmccc <nmcdataloggers@smtp2go.com\r\n"));  
   client.write(tBuf);
  
-  client.println("Subject: Marcellus Library Datalogger ALERT!!\r\n");
+  client.println("Subject: Marcellus Library Datalogger Data!!\r\n");
   client.println("Pressure Reading: ");
   client.print(Depth_pin);
-  clinet.print("Turbidity Reading: ");
-  client.print(Trub_pin);
+  client.println("Turbidity Reading: ");
+  client.print(Turb_pin);
   client.println("Temperatrue Reading: ");
   client.print(Temp_pin);
   client.println("Voltage Reading: ");
   client.print(Volt_pin);
-  // client.println("The datalogger at the Marcellus Library site is low on battery. Action must be taken shortly to assure consistent data collection");
-  client.
+  client.println("The datalogger at the Marcellus Library site is low on battery. Action must be taken shortly to assure consistent data collection");
   client.println(".");
   if(!eRcv()) return 0;
  
@@ -295,7 +297,7 @@ byte eRcv()
   byte thisByte;
   int loopCount = 0;
  
-  while(!client.available()) {
+  while(!client.available()){
     delay(1);
     loopCount++;
  
@@ -304,23 +306,20 @@ byte eRcv()
       client.stop();
       Serial.println(F("\r\nTimeout"));
       return 0;
-    }
+      }
   }
  
   respCode = client.peek();
  
-  while(client.available())
-  {  
+  while(client.available()){  
     thisByte = client.read();    
     Serial.write(thisByte);
   }
  
-  if(respCode >= '4')
-  {
+  if(respCode >= '4'){
     efail();
     return 0;  
   }
- 
   return 1;
 }
  
@@ -343,9 +342,8 @@ void efail() {
     }
   }
 }
- 
-  while(client.available())
-  {  
+/*
+  while(client.available()) {  
     thisByte = client.read();    
     Serial.write(thisByte);
   }
@@ -399,7 +397,7 @@ void printWifiData() {
   Serial.print(F("MAC address: "));
   Serial.print(mac[5],HEX);
   Serial.print(F(":"));
-  Serial.print(mac[4],HEX);
+  Serial.print(mac[4],HEX); 
   Serial.print(F(":"));
   Serial.print(mac[3],HEX);
   Serial.print(F(":"));
@@ -419,3 +417,4 @@ void printWifiData() {
   Serial.print(F("Gateway: "));
   Serial.println(gateway);
 }
+*/
