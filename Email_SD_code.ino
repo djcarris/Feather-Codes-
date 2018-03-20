@@ -1,11 +1,11 @@
+#include <Wire.h>
+#include "RTClib.h"
 #include <AdafruitIO.h>
 #include <AdafruitIO_Dashboard.h>
 #include <AdafruitIO_Data.h>
 #include <AdafruitIO_Definitions.h>
 #include <AdafruitIO_Feed.h>
 #include <AdafruitIO_Group.h>
-#include <AdafruitIO_MQTT.h>
-//#include <AdafruitIO_WiFi.h>
 #include <SPI.h>
 #include <WiFi101.h>
 //#include "config.h"
@@ -74,6 +74,15 @@ AdafruitIO_Feed *Temp = io.feed("Temperature");
 AdafruitIO_Feed *Depth = io.feed("Depth");
 
 AdafruitIO_Feed *Volt = io.feed("Voltage");
+// RTC clock setup
+#if defined(ARDUINO_ARCH_SAMD)
+// for Zero, output on USB Serial console, remove line below if using programming port to program the Zero!
+//   #define Serial SerialUSB
+#endif
+
+RTC_PCF8523 rtc;
+
+char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
 void setup() {
   //WiFi pins specific to the Adafruit Feather M0 WiFi - ATSAMD21 + ATWINC1500 breakout board
@@ -95,31 +104,22 @@ void setup() {
   // you're connected now, so print out the data:
   Serial.print("You're connected to the network");
 
-  /*Serial.println(" ");
-  Serial.print("Connecting to Adafruit IO");
-  io.connect();
-  while(io.status() < AIO_CONNECTED) {
-      Serial.print(".");
-      delay(500);
+if (! rtc.begin()) {
+    Serial.println("Couldn't find RTC");
+    while (1);
   }
-  // we are connected
-  Serial.println("Connected to Adafruit IO");
-  Serial.println();
-  Serial.println(io.statusText());*/
+
+  if (! rtc.initialized()) {
+    Serial.println("RTC is NOT running!");
+    // following line sets the RTC to the date & time this sketch was compiled
+    //rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    // This line sets the RTC with an explicit date & time, for example to set
+    // January 21, 2014 at 3am you would call:
+    // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
+  }
 }
 void loop() 
 {
-  //is required for all sketches.
-  // it should always be present at the top of your loop
-  // function. it keeps the client connected to
-  // io.adafruit.com, and processes any incoming data.
-  //io.run();
-  // Checking if still connected to AIO
-  //if (io.status() < AIO_CONNECTED);
-    //Serial.print("Connection Lost");
-    //Serial.print("Re-Connecting to AIO");
-    //io.connect();
-  //Serial.println(io.statusText());
   
   // grab the current state of the depth reading pin
   current = analogRead (A0);
@@ -160,7 +160,7 @@ void loop()
   current = analogRead(A3);
   
   // save the current state to the analog feed "voltage"
-  Serial.print(" ");
+  Serial.println(" ");
   Serial.print("sending -> Voltage ");
   Serial.println(current);
   Serial.println(" ");
@@ -174,17 +174,24 @@ void loop()
   int Turb_pin = analogRead(A1); 
   int Temp_pin = analogRead(A2);
   int Volt_pin = analogRead(A3);
-  // print out the value you read:
-  Serial.print(Depth_pin);
-  Serial.print(" ");
-  Serial.print(Turb_pin);  
-  Serial.print(" ");
-  Serial.println(Temp_pin);
-  Serial.print(" ");
-  Serial.print(Volt_pin);
-  Serial.print(" ");
   
-   
+DateTime now = rtc.now();
+    
+    Serial.print(now.year(), DEC);
+    Serial.print('/');
+    Serial.print(now.month(), DEC);
+    Serial.print('/');
+    Serial.print(now.day(), DEC);
+    Serial.print(" (");
+    Serial.print(daysOfTheWeek[now.dayOfTheWeek()]);
+    Serial.print(") ");
+    Serial.print(now.hour(), DEC);
+    Serial.print(':');
+    Serial.print(now.minute(), DEC);
+    Serial.print(':');
+    Serial.print(now.second(), DEC);
+    Serial.println();
+      
    //email data
    if(sendEmail(Depth_pin, Turb_pin, Temp_pin, Volt_pin)) Serial.println("Email sent");    
        else Serial.println("Email failed");
@@ -217,7 +224,6 @@ byte sendEmail(int Depth_pin, int Turb_pin, int Temp_pin, int Volt_pin){
  
   if(!eRcv()) return 0;
  
-  Serial.println(F("Sending Hello"));
   // change to the IP of your Arduino
   strcpy_P(tBuf,PSTR("EHLO 149.119.146.59\r\n"));  
   client.write(tBuf);
@@ -267,6 +273,8 @@ byte sendEmail(int Depth_pin, int Turb_pin, int Temp_pin, int Volt_pin){
   client.write(tBuf);
  
   client.println("Subject: Marcellus Library Datalogger Data!!\r\n");
+  client.println("DateTime: ");
+  //client.print(datestamp);
   client.println("Pressure Reading: ");
   client.print(Depth_pin);
   client.println("Turbidity Reading: ");
