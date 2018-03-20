@@ -1,4 +1,3 @@
-#include <Wire.h>
 #include "RTClib.h"
 #include <AdafruitIO.h>
 #include <AdafruitIO_Dashboard.h>
@@ -7,6 +6,7 @@
 #include <AdafruitIO_Feed.h>
 #include <AdafruitIO_Group.h>
 #include <SPI.h>
+#include <SD.h>
 #include <WiFi101.h>
 //#include "config.h"
 
@@ -74,15 +74,36 @@ AdafruitIO_Feed *Temp = io.feed("Temperature");
 AdafruitIO_Feed *Depth = io.feed("Depth");
 
 AdafruitIO_Feed *Volt = io.feed("Voltage");
+
 // RTC clock setup
 #if defined(ARDUINO_ARCH_SAMD)
-// for Zero, output on USB Serial console, remove line below if using programming port to program the Zero!
-//   #define Serial SerialUSB
 #endif
 
 RTC_PCF8523 rtc;
 
 char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+
+// SD Card setup
+// Set the pins used
+#define cardSelect 10
+
+File logfile;
+
+// blink out an error code
+void error(uint8_t errno) {
+  while(1) {
+    uint8_t i;
+    for (i=0; i<errno; i++) {
+      digitalWrite(13, HIGH);
+      delay(100);
+      digitalWrite(13, LOW);
+      delay(100);
+    }
+    for (i=errno; i<10; i++) {
+      delay(200);
+    }
+  }
+}
 
 void setup() {
   //WiFi pins specific to the Adafruit Feather M0 WiFi - ATSAMD21 + ATWINC1500 breakout board
@@ -117,11 +138,47 @@ if (! rtc.begin()) {
     // January 21, 2014 at 3am you would call:
     // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
   }
+
+pinMode(13, OUTPUT);
+
+
+  // see if the card is present and can be initialized:
+  if (!SD.begin(cardSelect)) {
+    Serial.println("Card init. failed!");
+    error(2);
+  }
+  char filename[15];
+  strcpy(filename, "ANALOG00.TXT");
+  for (uint8_t i = 0; i < 100; i++) {
+    filename[6] = '0' + i/10;
+    filename[7] = '0' + i%10;
+    // create if does not exist, do not open existing, write, sync after write
+    if (! SD.exists(filename)) {
+      break;
+    }
+  }
+
+  logfile = SD.open(filename, FILE_WRITE);
+  if( ! logfile ) {
+    Serial.print("Couldnt create "); 
+    Serial.println(filename);
+    error(3);
+  }
+  Serial.print("Writing to "); 
+  Serial.println(filename);
+
+  pinMode(13, OUTPUT);
+  pinMode(8, OUTPUT);
+  Serial.println("Ready!");
 }
+
+uint8_t i=0;
 void loop() 
 {
   
-  // grab the current state of the depth reading pin
+  /*
+  
+   // grab the current state of the depth reading pin
   current = analogRead (A0);
   // save the current state to the analog feed "Depth"
   Serial.println(" ");
@@ -167,7 +224,7 @@ void loop()
   Volt->save(current);
   // store last state of the voltage reading pin
   last = current;
-
+*/
   // for printing in the Serial monitor
   // read the input on analog pin A0 A1 A2 A3:
   int Depth_pin = analogRead(A0);
@@ -191,7 +248,29 @@ DateTime now = rtc.now();
     Serial.print(':');
     Serial.print(now.second(), DEC);
     Serial.println();
-      
+   
+  // Sace to SD card
+  // Pressure Sensor
+  digitalWrite(8, HIGH);
+  logfile.print("Pressure = "); logfile.println(analogRead(0));
+  Serial.print("Pressure = "); Serial.println(analogRead(0));
+  digitalWrite(8, LOW);
+  // Turbidity Sensor
+  digitalWrite(8, HIGH);
+  logfile.print("Turbidity = "); logfile.println(analogRead(1));
+  Serial.print("Turbidity = "); Serial.println(analogRead(1));
+  digitalWrite(8, LOW);
+  // Temperature Sensor
+  digitalWrite(8, HIGH);
+  logfile.print("Temperature = "); logfile.println(analogRead(2));
+  Serial.print("Temperature = "); Serial.println(analogRead(2));
+  digitalWrite(8, LOW);
+  // Volt Meter
+  digitalWrite(8, HIGH);
+  logfile.print("Voltage = "); logfile.println(analogRead(3));
+  Serial.print("Voltage = "); Serial.println(analogRead(3));
+  digitalWrite(8, LOW);
+  delay(2000);
    //email data
    if(sendEmail(Depth_pin, Turb_pin, Temp_pin, Volt_pin)) Serial.println("Email sent");    
        else Serial.println("Email failed");
