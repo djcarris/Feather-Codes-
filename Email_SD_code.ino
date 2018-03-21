@@ -179,47 +179,60 @@ void loop()
   int Volt_pin = analogRead(A3);
   
 DateTime now = rtc.now();
-    
-    Serial.print(now.year(), DEC);
-    Serial.print('/');
-    Serial.print(now.month(), DEC);
-    Serial.print('/');
-    Serial.print(now.day(), DEC);
-    Serial.print(" (");
-    Serial.print(daysOfTheWeek[now.dayOfTheWeek()]);
-    Serial.print(") ");
-    Serial.print(now.hour(), DEC);
-    Serial.print(':');
-    Serial.print(now.minute(), DEC);
-    Serial.print(':');
-    Serial.print(now.second(), DEC);
-    Serial.println();
-   
+    String line = "";
+    line += now.year();
+    line +='/';
+    line +=now.month();
+    line +='/';
+    line +=now.day();
+    line +=" (";
+    line += (daysOfTheWeek[now.dayOfTheWeek()]);
+    line +=") ";
+    line +=now.hour();
+    line +=':';
+    line +=now.minute();
+    line +=':';
+    line +=now.second();
+    Serial.print(line);
+    Serial.println(" ");
+    line+=" ";    
+    line+=analogRead(0);
+    line+=" ";
+    line+=analogRead(1);
+    line+=" ";
+    line+=analogRead(2);
+    line+=" ";
+    line+=analogRead(3);
+    Serial.print(line);
+    Serial.println(" ");
+    logfile.print(line);
+    logfile.println(" ");
+    logfile.flush();
   // Sace to SD card
   // Pressure Sensor
   //logfile.print("DateTime: "); logfile.println(rtc.now());
   //Serial.print("DateTime: "); Serial.println(rtc.now());
   digitalWrite(8, HIGH);
-  logfile.print("Pressure = "); logfile.println(analogRead(0));
-  logfile.flush();
+  //logfile.print("Pressure = "); logfile.println(analogRead(0));
+  //logfile.flush();
   Serial.print("Pressure = "); Serial.println(analogRead(0));
   digitalWrite(8, LOW);
   // Turbidity Sensor
   digitalWrite(8, HIGH);
-  logfile.print("Turbidity = "); logfile.println(analogRead(1));
-  logfile.flush();
+  //logfile.print("Turbidity = "); logfile.println(analogRead(1));
+  //logfile.flush();
   Serial.print("Turbidity = "); Serial.println(analogRead(1));
   digitalWrite(8, LOW);
   // Temperature Sensor
   digitalWrite(8, HIGH);
-  logfile.print("Temperature = "); logfile.println(analogRead(2));
-  logfile.flush();
+  //logfile.print("Temperature = "); logfile.println(analogRead(2));
+  //logfile.flush();
   Serial.print("Temperature = "); Serial.println(analogRead(2));
   digitalWrite(8, LOW);
   // Volt Meter
   digitalWrite(8, HIGH);
-  logfile.print("Voltage = "); logfile.println(analogRead(3));
-  logfile.flush();
+  //logfile.print("Voltage = "); logfile.println(analogRead(3));
+  //logfile.flush();
   Serial.print("Voltage = "); Serial.println(analogRead(3));
   digitalWrite(8, LOW);
    //email data
@@ -236,7 +249,7 @@ DateTime now = rtc.now();
        else Serial.println("Email failed");
         statusCheck = true;
    }*/
-delay(180000);
+delay(3600000);
 }
 byte sendEmail(int Depth_pin, int Turb_pin, int Temp_pin, int Volt_pin){
   byte thisByte = 0;
