@@ -173,111 +173,25 @@ void loop()
   // function definition further below.
   MQTT_connect();
   
-  // read the input on analog pin A0 A1 A2 A3:
+  // read the input on analog pin A0 A1 A2 A3. These variables are required for the below functions
   int Depth_pin = analogRead(A0);
   int Turb_pin = analogRead(A1); 
   int Temp_pin = analogRead(A2);
   int Volt_pin = analogRead(A3);
+
+  // call function to write data to SD card
+ 
+  SD_write(Depth_pin, Turb_pin, Temp_pin, Volt_pin);
   
-DateTime now = rtc.now();
-    String line = "";
-    line += now.year();
-    line +='/';
-    line +=now.month();
-    line +='/';
-    line +=now.day();
-    line +=" (";
-    line += (daysOfTheWeek[now.dayOfTheWeek()]);
-    line +=") ";
-    line +=now.hour();
-    line +=':';
-    line +=now.minute();
-    line +=':';
-    line +=now.second();
-    Serial.print(line);
-    Serial.println(" ");
-    line+=" ";    
-    line+=analogRead(0);
-    line+=" ";
-    line+=analogRead(1);
-    line+=" ";
-    line+=analogRead(2);
-    line+=" ";
-    line+=analogRead(3);
-    Serial.print(line);
-    Serial.println(" ");
-    logfile.print(line);
-    logfile.println(" ");
-    logfile.flush();
-  // Sace to SD card
-  // Pressure Sensor
-  //logfile.print("DateTime: "); logfile.println(rtc.now());
-  //Serial.print("DateTime: "); Serial.println(rtc.now());
-  digitalWrite(8, HIGH);
-  //logfile.print("Pressure = "); logfile.println(analogRead(0));
-  //logfile.flush();
-  Serial.print("Pressure = "); Serial.println(analogRead(0));
-  digitalWrite(8, LOW);
-  // Turbidity Sensor
-  digitalWrite(8, HIGH);
-  //logfile.print("Turbidity = "); logfile.println(analogRead(1));
-  //logfile.flush();
-  Serial.print("Turbidity = "); Serial.println(analogRead(1));
-  digitalWrite(8, LOW);
-  // Temperature Sensor
-  digitalWrite(8, HIGH);
-  //logfile.print("Temperature = "); logfile.println(analogRead(2));
-  //logfile.flush();
-  Serial.print("Temperature = "); Serial.println(analogRead(2));
-  digitalWrite(8, LOW);
-  // Volt Meter
-  digitalWrite(8, HIGH);
-  //logfile.print("Voltage = "); logfile.println(analogRead(3));
-  //logfile.flush();
-  Serial.print("Voltage = "); Serial.println(analogRead(3));
-  digitalWrite(8, LOW);
+  // call function to email data
   
-   //email data
    if(sendEmail(Depth_pin, Turb_pin, Temp_pin, Volt_pin)) Serial.println("Email sent");    
        else Serial.println("Email failed");
         statusCheck = true;
 
-  // Now we can publish stuff!
-  Serial.print(F("\nSending Depth val "));
-  Serial.print(Depth_pin);
-  Serial.print("...");
-  if (! Depth.publish(uint32_t(Depth_pin))) {
-    Serial.println(F("Failed"));
-  } else {
-    Serial.println(F("OK!"));
-  }
+  // call function to publish data
 
-  Serial.print(F("\nSending Temperature val "));
-  Serial.print(Temp_pin);
-  Serial.print("...");
-  if (! Temperature.publish(uint32_t(Temp_pin))) {
-    Serial.println(F("Failed"));
-  } else {
-    Serial.println(F("OK!"));
-  }
-
-  Serial.print(F("\nSending Turbidity val "));
-  Serial.print(Turb_pin);
-  Serial.print("...");
-  if (! Turbidity.publish(uint32_t(Turb_pin))) {
-    Serial.println(F("Failed"));
-  } else {
-    Serial.println(F("OK!"));
-  }
-
-  Serial.print(F("\nSending Voltage val "));
-  Serial.print(Volt_pin);
-  Serial.print("...");
-  if (! Voltage.publish(uint32_t(Volt_pin))) {
-    Serial.println(F("Failed"));
-  } else {
-    Serial.println(F("OK!"));
-  }
+  IO_publish ( Depth_pin, Turb_pin, Temp_pin, Volt_pin);
   
   delay(3600000);
 }
@@ -292,9 +206,9 @@ void MQTT_connect() {
     Serial.print("Attempting to connect to SSID: ");
     Serial.println(ssid);
     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-    status = WiFi.begin(ssid, pass);  
+    //status = WiFi.begin(ssid, pass);  
     // Connect to open network.
-    //status = WiFi.begin(ssid);
+    status = WiFi.begin(ssid);
   
     // wait 10 seconds for connection:
     uint8_t timeout = 10;
@@ -320,6 +234,107 @@ void MQTT_connect() {
   Serial.println("MQTT Connected!");
 }
 
+void SD_write(int Depth_pin, int Turb_pin, int Temp_pin, int Volt_pin)
+{
+  DateTime now = rtc.now();
+    String line = "";
+    line += now.year();
+    line +='/';
+    line +=now.month();
+    line +='/';
+    line +=now.day();
+    line +=" (";
+    line += (daysOfTheWeek[now.dayOfTheWeek()]);
+    line +=") ";
+    line +=now.hour();
+    line +=':';
+    line +=now.minute();
+    line +=':';
+    line +=now.second();
+    Serial.print(line);
+    Serial.println(" ");
+    line+=" ";    
+    line+=Depth_pin;
+    line+=" ";
+    line+=Turb_pin;
+    line+=" ";
+    line+=Temp_pin;
+    line+=" ";
+    line+=Volt_pin;
+    Serial.print(line);
+    Serial.println(" ");
+    logfile.print(line);
+    logfile.println(" ");
+    logfile.flush();
+  // Sace to SD card
+  // Pressure Sensor
+  //logfile.print("DateTime: "); logfile.println(rtc.now());
+  //Serial.print("DateTime: "); Serial.println(rtc.now());
+  digitalWrite(8, HIGH);
+  //logfile.print("Pressure = "); logfile.println(analogRead(0));
+  //logfile.flush();
+  Serial.print("Pressure = "); Serial.println(Depth_pin);
+  digitalWrite(8, LOW);
+  // Turbidity Sensor
+  digitalWrite(8, HIGH);
+  //logfile.print("Turbidity = "); logfile.println(analogRead(1));
+  //logfile.flush();
+  Serial.print("Turbidity = "); Serial.println(Turb_pin);
+  digitalWrite(8, LOW);
+  // Temperature Sensor
+  digitalWrite(8, HIGH);
+  //logfile.print("Temperature = "); logfile.println(analogRead(2));
+  //logfile.flush();
+  Serial.print("Temperature = "); Serial.println(Temp_pin);
+  digitalWrite(8, LOW);
+  // Volt Meter
+  digitalWrite(8, HIGH);
+  //logfile.print("Voltage = "); logfile.println(analogRead(3));
+  //logfile.flush();
+  Serial.print("Voltage = "); Serial.println(Volt_pin);
+  digitalWrite(8, LOW);
+}
+
+// IO publishing function
+void IO_publish (int Depth_pin, int Turb_pin, int Temp_pin, int Volt_pin)
+{
+Serial.print(F("\nSending Depth val "));
+  Serial.print(Depth_pin);
+  Serial.print("...");
+  if (! Depth.publish(uint32_t(Depth_pin))) {
+    Serial.println(F("Failed"));
+  } else {
+    Serial.println(F("OK!"));
+  }
+
+  Serial.print(F("\nSending Temperature val "));
+  Serial.print(Turb_pin);
+  Serial.print("...");
+  if (! Temperature.publish(uint32_t(Turb_pin))) {
+    Serial.println(F("Failed"));
+  } else {
+    Serial.println(F("OK!"));
+  }
+
+  Serial.print(F("\nSending Turbidity val "));
+  Serial.print(Temp_pin);
+  Serial.print("...");
+  if (! Turbidity.publish(uint32_t(Temp_pin))) {
+    Serial.println(F("Failed"));
+  } else {
+    Serial.println(F("OK!"));
+  }
+
+  Serial.print(F("\nSending Voltage val "));
+  Serial.print(Volt_pin);
+  Serial.print("...");
+  if (! Voltage.publish(uint32_t(Volt_pin))) {
+    Serial.println(F("Failed"));
+  } else {
+    Serial.println(F("OK!"));
+  }
+}
+// email function
 byte sendEmail(int Depth_pin, int Turb_pin, int Temp_pin, int Volt_pin){
   byte thisByte = 0;
   byte respCode;
@@ -462,4 +477,3 @@ void efail() {
     }
   }
 }
-
